@@ -1,6 +1,141 @@
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import java.sql.Timestamp;
+import java.util.Arrays;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
+
+@RunWith(MockitoJUnitRunner.class)
+public class StatusObjectTest {
+
+    @Mock
+    private BasicDaoI<Client> clientDao;
+
+    @Mock
+    private BasicDaoI<Process> processDao;
+
+    @Mock
+    private BasicDaoI<WorkUnit> workUnitDao;
+
+    @Mock
+    private BasicDaoI<Status> statusDao;
+
+    @Mock
+    private BasicDaoI<StatusType> statusTypeDao;
+
+    @Mock
+    private BasicDaoI<GenericMatches> genericMatchesDao;
+
+    @Mock
+    private BasicDaoI<GenericExceptions> genericExceptionsDao;
+
+    @InjectMocks
+    private StatusObject statusObject;
+
+    private Client client;
+    private Process process;
+    private WorkUnit workUnit;
+    private StatusType statusTypeSuccess;
+    private StatusType statusTypeException;
+    private GenericMatches genericMatches;
+    private GenericExceptions genericExceptions;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        client = new Client();
+        client.setName("TestClient");
+
+        process = new Process();
+        process.setName("TestProcess");
+
+        workUnit = new WorkUnit();
+        workUnit.setName("TestWorkUnit");
+
+        statusTypeSuccess = new StatusType();
+        statusTypeSuccess.setName("SUCCESS");
+
+        statusTypeException = new StatusType();
+        statusTypeException.setName("EXCEPTION");
+
+        genericMatches = new GenericMatches();
+        genericMatches.setMatchId("Match1");
+
+        genericExceptions = new GenericExceptions();
+        genericExceptions.setType("ErrorType");
+    }
+
+    @Test
+    public void testSetStatusToSuccess_Success() throws StatusException {
+        when(clientDao.readAll()).thenReturn(Arrays.asList(client));
+        when(processDao.readAll()).thenReturn(Arrays.asList(process));
+        when(workUnitDao.readAll()).thenReturn(Arrays.asList(workUnit));
+        when(statusTypeDao.readAll()).thenReturn(Arrays.asList(statusTypeSuccess));
+        when(genericMatchesDao.insert(any(GenericMatches.class))).thenReturn(1L);
+        doNothing().when(statusDao).insert(any(Status.class));
+
+        boolean result = statusObject.setStatusToSuccess(
+            "TestProcess", "TestWorkUnit", "TestClient", "SomeValue", "Match1", "Match2", "Criteria", "MatchStat");
+
+        assertTrue(result);
+        verify(statusDao, times(1)).insert(any(Status.class));
+    }
+
+    @Test(expected = StatusException.class)
+    public void testSetStatusToSuccess_InvalidClient() throws StatusException {
+        when(clientDao.readAll()).thenReturn(null);
+        statusObject.setStatusToSuccess("TestProcess", "TestWorkUnit", "InvalidClient", "SomeValue", "Match1", "Match2", "Criteria", "MatchStat");
+    }
+
+    @Test(expected = StatusException.class)
+    public void testSetStatusToSuccess_InvalidProcess() throws StatusException {
+        when(clientDao.readAll()).thenReturn(Arrays.asList(client));
+        when(processDao.readAll()).thenReturn(null);
+        statusObject.setStatusToSuccess("InvalidProcess", "TestWorkUnit", "TestClient", "SomeValue", "Match1", "Match2", "Criteria", "MatchStat");
+    }
+
+    @Test
+    public void testSetStatusToException_Success() throws StatusException {
+        when(clientDao.readAll()).thenReturn(Arrays.asList(client));
+        when(processDao.readAll()).thenReturn(Arrays.asList(process));
+        when(workUnitDao.readAll()).thenReturn(Arrays.asList(workUnit));
+        when(statusTypeDao.readAll()).thenReturn(Arrays.asList(statusTypeException));
+        when(genericExceptionsDao.insert(any(GenericExceptions.class))).thenReturn(1L);
+        doNothing().when(statusDao).insert(any(Status.class));
+
+        boolean result = statusObject.setStatusToException(
+            "TestProcess", "TestWorkUnit", "TestClient", "SomeValue", "ErrorType", "Source1", "SomeReason");
+
+        assertTrue(result);
+        verify(statusDao, times(1)).insert(any(Status.class));
+    }
+
+    @Test(expected = StatusException.class)
+    public void testSetStatusToException_InvalidClient() throws StatusException {
+        when(clientDao.readAll()).thenReturn(null);
+        statusObject.setStatusToException("TestProcess", "TestWorkUnit", "InvalidClient", "SomeValue", "ErrorType", "Source1", "SomeReason");
+    }
+
+    @Test(expected = StatusException.class)
+    public void testSetStatusToException_InvalidProcess() throws StatusException {
+        when(clientDao.readAll()).thenReturn(Arrays.asList(client));
+        when(processDao.readAll()).thenReturn(null);
+        statusObject.setStatusToException("InvalidProcess", "TestWorkUnit", "TestClient", "SomeValue", "ErrorType", "Source1", "SomeReason");
+    }
+}
+
+
+ import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
