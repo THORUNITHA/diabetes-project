@@ -1,6 +1,104 @@
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
+
+import java.sql.Timestamp;
+
+@RunWith(MockitoJUnitRunner.class)
+public class StatusObjectTest {
+
+    @InjectMocks
+    private StatusObject statusObject;
+
+    @Mock
+    private BasicDaoI<GenericMatches> genericMatchesDao;
+    
+    @Mock
+    private BasicDaoI<GenericExceptions> genericExceptionsDao;
+
+    @Mock
+    private BasicDaol<Status> statusDao;
+
+    @Mock
+    private BasicDaol<StatusType> statusTypeDao;
+
+    @Mock
+    private BasicDaol<Client> clientDao;
+
+    @Mock
+    private BasicDaol<Process> processDao;
+
+    @Mock
+    private BasicDaoI<WorkUnit> workUnitDao;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testSetStatusToSuccess() throws StatusException {
+        // Mocking dependencies
+        Client client = new Client();
+        Process process = new Process();
+        WorkUnit workUnit = new WorkUnit();
+        StatusType statusType = new StatusType();
+        GenericMatches gm = new GenericMatches();
+
+        when(clientDao.readAll()).thenReturn(List.of(client));
+        when(processDao.readAll()).thenReturn(List.of(process));
+        when(workUnitDao.readAll()).thenReturn(List.of(workUnit));
+        when(statusTypeDao.readAll()).thenReturn(List.of(statusType));
+        when(genericMatchesDao.insert(any(GenericMatches.class))).thenReturn(1L);
+        
+        doNothing().when(statusDao).insert(any(Status.class));
+
+        // Execute the method
+        boolean result = statusObject.setStatusToSuccess("process", "workUnit", "client", "value", "matchId", "matchWithId", "matchCriteria", "matchStat");
+
+        // Verify and assert
+        assertTrue(result);
+        verify(statusDao, times(1)).insert(any(Status.class));
+    }
+
+    @Test
+    public void testSetStatusToException() throws StatusException {
+        // Mocking dependencies
+        Client client = new Client();
+        Process process = new Process();
+        WorkUnit workUnit = new WorkUnit();
+        StatusType statusType = new StatusType();
+        GenericExceptions ge = new GenericExceptions();
+
+        when(clientDao.readAll()).thenReturn(List.of(client));
+        when(processDao.readAll()).thenReturn(List.of(process));
+        when(workUnitDao.readAll()).thenReturn(List.of(workUnit));
+        when(statusTypeDao.readAll()).thenReturn(List.of(statusType));
+        when(genericExceptionsDao.insert(any(GenericExceptions.class))).thenReturn(1L);
+        
+        doNothing().when(statusDao).insert(any(Status.class));
+
+        // Execute the method
+        boolean result = statusObject.setStatusToException("process", "workUnit", "client", "value", "type", "sourceId", "reason");
+
+        // Verify and assert
+        assertTrue(result);
+        verify(statusDao, times(1)).insert(any(Status.class));
+    }
+}
+
+
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
