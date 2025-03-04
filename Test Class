@@ -1,3 +1,105 @@
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.hibernate.HibernateException;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
+
+@RunWith(MockitoJUnitRunner.class)
+public class TStGeneralMappingDaoImplTest {
+
+    @Mock
+    private Session mockSession;
+
+    @Mock
+    private Transaction mockTransaction;
+
+    @Mock
+    private Query<TStGeneralMapping> mockQuery;
+
+    @InjectMocks
+    private TStGeneralMappingDaoImpl dao;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        when(mockSession.beginTransaction()).thenReturn(mockTransaction);
+    }
+
+    @Test
+    public void testGetProcessGeneralMapping_Success() {
+        String processName = "TestProcess";
+        TStGeneralMapping mockMapping = new TStGeneralMapping();
+        
+        when(mockSession.createSQLQuery(anyString())).thenReturn(mockQuery);
+        when(mockQuery.addEntity(TStGeneralMapping.class)).thenReturn(mockQuery);
+        when(mockQuery.list()).thenReturn(Arrays.asList(mockMapping));
+
+        List<TStGeneralMapping> result = dao.getProcessGeneralMapping(processName);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(mockTransaction).commit();
+    }
+
+    @Test
+    public void testGetGUIClientMappings_Success() {
+        String sourceName = "TestSource";
+        TStGeneralMapping mockMapping = new TStGeneralMapping();
+
+        when(mockSession.createSQLQuery(anyString())).thenReturn(mockQuery);
+        when(mockQuery.addEntity(TStGeneralMapping.class)).thenReturn(mockQuery);
+        when(mockQuery.list()).thenReturn(Arrays.asList(mockMapping));
+
+        List<TStGeneralMapping> result = dao.getGUIClientMappings(sourceName);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(mockTransaction).commit();
+    }
+
+    @Test
+    public void testGetAutosysInfo_Success() {
+        String sourceName = "TestAutosys";
+        TStGeneralMapping mockMapping = new TStGeneralMapping();
+
+        when(mockSession.createSQLQuery(anyString())).thenReturn(mockQuery);
+        when(mockQuery.addEntity(TStGeneralMapping.class)).thenReturn(mockQuery);
+        when(mockQuery.list()).thenReturn(Arrays.asList(mockMapping));
+
+        List<TStGeneralMapping> result = dao.getAutosysInfo(sourceName);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(mockTransaction).commit();
+    }
+
+    @Test(expected = HibernateException.class)
+    public void testGetProcessGeneralMapping_Exception() {
+        when(mockSession.createSQLQuery(anyString())).thenThrow(new HibernateException("DB Error"));
+
+        dao.getProcessGeneralMapping("TestProcess");
+
+        verify(mockTransaction).rollback();
+    }
+}
+
+
+
+
+
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
