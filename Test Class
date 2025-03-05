@@ -1,3 +1,129 @@
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
+
+import com.baml.tml.futures.daoImpl.TProcessHeartbeatDaoImpl;
+import com.baml.tml.futures.daoImpl.TProcessHeartbeatSummaryDaoImpl;
+import com.baml.tml.futures.daoImpl.TProcessStatusLogDaoImpl;
+import com.baml.tml.futures.daoImpl.TStGeneralMappingDaoImpl;
+import com.baml.tml.futures.model.TProcessHeartbeat;
+import com.baml.tml.futures.model.TProcessHeartbeatSummary;
+import com.baml.tml.futures.model.TStGeneralMapping;
+import com.baml.tml.futures.ui.model.ApplicationStatusDTO;
+import com.baml.tml.futures.ui.model.TProcessHeartbeatVO;
+
+@RunWith(MockitoJUnitRunner.class)
+public class StatusAggregationManagerImplTest {
+
+    @InjectMocks
+    private StatusAggregationManagerImpl statusAggregationManager;
+
+    @Mock
+    private TProcessHeartbeatDaoImpl heartbeatDaoImpl;
+
+    @Mock
+    private TStGeneralMappingDaoImpl generalMappingDaoImpl;
+
+    @Mock
+    private TProcessHeartbeatSummaryDaoImpl heartbeatSummaryDaoImpl;
+
+    @Mock
+    private TProcessStatusLogDaoImpl processStatusLogDaoImpl;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    public void testGetActiveProcessList() {
+        List<String> mockProcesses = Arrays.asList("Process1", "Process2");
+
+        when(heartbeatDaoImpl.getDistinctProcess()).thenReturn(mockProcesses);
+
+        List<String> result = statusAggregationManager.getActiveProcessList();
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals("Process1", result.get(0));
+
+        verify(heartbeatDaoImpl, times(1)).getDistinctProcess();
+    }
+
+    @Test
+    public void testGetHeartbeatSummary() {
+        List<TProcessHeartbeatSummary> mockSummaryList = Arrays.asList(new TProcessHeartbeatSummary(), new TProcessHeartbeatSummary());
+
+        when(heartbeatSummaryDaoImpl.getProcessHeartbeatList()).thenReturn(mockSummaryList);
+
+        List<TProcessHeartbeatSummary> result = statusAggregationManager.getHeartbeatSummary();
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        verify(heartbeatSummaryDaoImpl, times(1)).getProcessHeartbeatList();
+    }
+
+    @Test
+    public void testGetProcessGeneralMapping() {
+        String processName = "TestProcess";
+        List<TStGeneralMapping> mockMappings = Arrays.asList(new TStGeneralMapping());
+
+        when(generalMappingDaoImpl.getProcessGeneralMapping(processName)).thenReturn(mockMappings);
+
+        List<TStGeneralMapping> result = statusAggregationManager.getProcessGeneralMapping(processName);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+
+        verify(generalMappingDaoImpl, times(1)).getProcessGeneralMapping(processName);
+    }
+
+    @Test
+    public void testUpdateMonitorStatus() {
+        TProcessHeartbeatVO mockHeartbeatVO = new TProcessHeartbeatVO();
+        
+        when(heartbeatSummaryDaoImpl.updateMonitorStatus(mockHeartbeatVO)).thenReturn(true);
+
+        String result = statusAggregationManager.updateMonitorStatus(mockHeartbeatVO);
+
+        assertEquals("Status updated successfully", result);
+
+        verify(heartbeatSummaryDaoImpl, times(1)).updateMonitorStatus(mockHeartbeatVO);
+    }
+
+    @Test
+    public void testGetAutosysInfo() {
+        String processName = "TestProcess";
+        TStGeneralMapping mockMapping = new TStGeneralMapping();
+        mockMapping.setCriterialC("TestCriteria");
+
+        when(generalMappingDaoImpl.getAutosysInfo(processName)).thenReturn(Arrays.asList(mockMapping));
+
+        String result = statusAggregationManager.getAutosysInfo(processName);
+
+        assertNotNull(result);
+        assertTrue(result.contains("TestCriteria"));
+
+        verify(generalMappingDaoImpl, times(1)).getAutosysInfo(processName);
+    }
+}
+
+
+
+
+
+
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
