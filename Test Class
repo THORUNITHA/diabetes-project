@@ -1,6 +1,122 @@
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import java.util.*;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
+
+import com.baml.tml.futures.daoImpl.TProcessHeartbeatSummaryDaoImpl;
+import com.baml.tml.futures.ui.model.ApplicationStatusDTO;
+import com.baml.tml.futures.ui.model.TProcessHeartbeatVO;
+
+@RunWith(MockitoJUnitRunner.class)
+public class StatusAggregationManagerImplTest {
+
+    @InjectMocks
+    private StatusAggregationManagerImpl statusAggregationManager;
+
+    @Mock
+    private TProcessHeartbeatSummaryDaoImpl heartbeatSummaryDaoImpl;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    public void testGetHaDashboardInfo() {
+        // Mocking heartbeat status
+        TProcessHeartbeatVO tmlVO1 = new TProcessHeartbeatVO();
+        tmlVO1.setHearbeatStatusC("OK");
+        tmlVO1.setItrsMonitoringStatusC("GREEN");
+
+        TProcessHeartbeatVO tmlVO2 = new TProcessHeartbeatVO();
+        tmlVO2.setHearbeatStatusC("CRITICAL");
+        tmlVO2.setItrsMonitoringStatusC("RED");
+
+        TProcessHeartbeatVO consensysVO = new TProcessHeartbeatVO();
+        consensysVO.setHearbeatStatusC("WARN");
+        consensysVO.setItrsMonitoringStatusC("YELLOW");
+
+        Map<String, List<TProcessHeartbeatVO>> mockData = new HashMap<>();
+        mockData.put("TML", Arrays.asList(tmlVO1, tmlVO2));
+        mockData.put("CONSENSYS", Arrays.asList(consensysVO));
+
+        when(heartbeatSummaryDaoImpl.getHaDashoardInfo()).thenReturn(mockData);
+
+        List<ApplicationStatusDTO> result = statusAggregationManager.getHaDashoardInfo();
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        ApplicationStatusDTO tmlStatus = result.get(0);
+        ApplicationStatusDTO consensysStatus = result.get(1);
+
+        assertEquals("TML", tmlStatus.getName());
+        assertEquals("CRITICAL", tmlStatus.getStatus()); // Highest priority status
+
+        assertEquals("CONSENSYS", consensysStatus.getName());
+        assertEquals("WARN", consensysStatus.getStatus());
+
+        verify(heartbeatSummaryDaoImpl, times(1)).getHaDashoardInfo();
+    }
+
+    @Test
+    public void testGetHaDashboardDetails() {
+        // Mocking process group data
+        TProcessHeartbeatVO tmlVO1 = new TProcessHeartbeatVO();
+        tmlVO1.setProcessGroupC("Group1");
+        tmlVO1.setHearbeatStatusC("OK");
+        tmlVO1.setItrsMonitoringStatusC("GREEN");
+
+        TProcessHeartbeatVO tmlVO2 = new TProcessHeartbeatVO();
+        tmlVO2.setProcessGroupC("Group1");
+        tmlVO2.setHearbeatStatusC("CRITICAL");
+        tmlVO2.setItrsMonitoringStatusC("RED");
+
+        TProcessHeartbeatVO consensysVO = new TProcessHeartbeatVO();
+        consensysVO.setProcessGroupC("Group2");
+        consensysVO.setHearbeatStatusC("WARN");
+        consensysVO.setItrsMonitoringStatusC("YELLOW");
+
+        Map<String, List<TProcessHeartbeatVO>> mockData = new HashMap<>();
+        mockData.put("TML", Arrays.asList(tmlVO1, tmlVO2));
+        mockData.put("CONSENSYS", Arrays.asList(consensysVO));
+
+        when(heartbeatSummaryDaoImpl.getHaDashoardInfo()).thenReturn(mockData);
+
+        Map<String, List<ApplicationStatusDTO>> result = statusAggregationManager.getHaDashoardDetails();
+
+        assertNotNull(result);
+        assertTrue(result.containsKey("TML"));
+        assertTrue(result.containsKey("CONSENSYS"));
+
+        List<ApplicationStatusDTO> tmlStatuses = result.get("TML");
+        List<ApplicationStatusDTO> consensysStatuses = result.get("CONSENSYS");
+
+        assertEquals(1, tmlStatuses.size());
+        assertEquals("Group1", tmlStatuses.get(0).getName());
+        assertEquals("CRITICAL", tmlStatuses.get(0).getStatus()); // Highest priority
+
+        assertEquals(1, consensysStatuses.size());
+        assertEquals("Group2", consensysStatuses.get(0).getName());
+        assertEquals("WARN", consensysStatuses.get(0).getStatus());
+
+        verify(heartbeatSummaryDaoImpl, times(1)).getHaDashoardInfo();
+    }
+}
+
+
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
 import java.util.Arrays;
 import java.util.List;
 
