@@ -1,3 +1,145 @@
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.jdbc.ReturningWork;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
+
+import com.baml.tml.futures.ui.model.TProcessHeartbeatVO;
+
+@RunWith(MockitoJUnitRunner.class)
+public class TProcessHeartbeatSummaryDaoImplTest {
+
+    @InjectMocks
+    private TProcessHeartbeatSummaryDaoImpl dao;
+
+    @Mock
+    private Session session;
+
+    @Mock
+    private Transaction transaction;
+
+    @Mock
+    private Connection connection;
+
+    @Mock
+    private PreparedStatement preparedStatement;
+
+    @Mock
+    private ResultSet resultSet;
+
+    @Before
+    public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+        when(session.beginTransaction()).thenReturn(transaction);
+        when(session.doReturningWork(any())).thenAnswer(invocation -> {
+            ReturningWork<?> work = invocation.getArgument(0);
+            return work.execute(connection);
+        });
+    }
+
+    @Test
+    public void testGetHeartbeatVO() throws Exception {
+        String processGroup = "TestGroup";
+
+        // Mocking connection, preparedStatement, and resultSet behavior
+        when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true, false); // First call returns data, second returns false
+
+        // Mocking result set data
+        when(resultSet.getInt(1)).thenReturn(1);
+        when(resultSet.getString(2)).thenReturn("TestProcess");
+        when(resultSet.getString(3)).thenReturn("localhost");
+        when(resultSet.getString(4)).thenReturn(processGroup);
+        when(resultSet.getString(5)).thenReturn("OK");
+        when(resultSet.getString(6)).thenReturn("Description");
+        when(resultSet.getString(7)).thenReturn("GREEN");
+        when(resultSet.getString(8)).thenReturn("Resolved");
+        when(resultSet.getString(9)).thenReturn("Error");
+        when(resultSet.getString(10)).thenReturn("User");
+
+        // Call the method
+        List<TProcessHeartbeatVO> result = dao.getHeartbeatVO(processGroup);
+
+        // Assertions
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("TestProcess", result.get(0).getProcessNameC());
+        assertEquals("OK", result.get(0).getHearbeatStatusC());
+
+        // Verify interactions
+        verify(connection).prepareStatement(anyString());
+        verify(preparedStatement).executeQuery();
+        verify(resultSet, times(2)).next();
+    }
+
+    @Test
+    public void testUpdateMonitorStatus() throws Exception {
+        TProcessHeartbeatVO heartbeatVO = new TProcessHeartbeatVO();
+        heartbeatVO.setProcessNameC("TestProcess");
+        heartbeatVO.setItrsUpdate(true);
+        heartbeatVO.setHearbeatStatusC("OK");
+        heartbeatVO.setUpdatedByC("Admin");
+
+        // Mock prepared statements for update queries
+        when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
+        when(preparedStatement.executeUpdate()).thenReturn(1);
+
+        // Call the method
+        boolean result = dao.updateMonitorStatus(heartbeatVO);
+
+        // Assertions
+        assertTrue(result);
+
+        // Verify that updates were executed
+        verify(preparedStatement, atLeastOnce()).executeUpdate();
+    }
+
+    @Test
+    public void testGetHaDashboardInfo() throws Exception {
+        // Mocking behavior similar to testGetHeartbeatVO
+        when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
+        when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true, false);
+        when(resultSet.getString(1)).thenReturn("TML");
+        when(resultSet.getString(2)).thenReturn("Group1");
+        when(resultSet.getString(3)).thenReturn("OK");
+        when(resultSet.getString(4)).thenReturn("TestProcess");
+        when(resultSet.getString(5)).thenReturn("GREEN");
+
+        // Call the method
+        Map<String, List<TProcessHeartbeatVO>> result = dao.getHaDashoardInfo();
+
+        // Assertions
+        assertNotNull(result);
+        assertTrue(result.containsKey("TML"));
+        assertEquals(1, result.get("TML").size());
+        assertEquals("OK", result.get("TML").get(0).getHearbeatStatusC());
+
+        // Verify interactions
+        verify(connection).prepareStatement(anyString());
+        verify(preparedStatement).executeQuery();
+        verify(resultSet, times(2)).next();
+    }
+}
+
+
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
