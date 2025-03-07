@@ -1,3 +1,96 @@
+package com.baml.tml.futures.daoImpl;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.hibernate.SQLQuery;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import com.baml.tml.futures.model.TProcessHeartbeat;
+
+public class TProcessHeartbeatDaoImplTest {
+
+    @Mock
+    private Session mockSession;
+
+    @Mock
+    private Transaction mockTransaction;
+
+    @Mock
+    private SQLQuery mockQuery;
+
+    @InjectMocks
+    private TProcessHeartbeatDaoImpl dao;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        when(mockSession.beginTransaction()).thenReturn(mockTransaction);
+    }
+
+    @Test
+    public void testGetProcessHeartbeatList() {
+        String processName = "TestProcess";
+
+        when(mockSession.createSQLQuery(anyString())).thenReturn(mockQuery);
+        when(mockQuery.addEntity(TProcessHeartbeat.class)).thenReturn(mockQuery);
+        when(mockQuery.setParameter("processName", processName)).thenReturn(mockQuery);
+        when(mockQuery.list()).thenReturn(Arrays.asList(new TProcessHeartbeat()));
+
+        List<TProcessHeartbeat> result = dao.getProcessHeartbeatList(processName);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(mockTransaction).commit();
+        verify(mockSession).close();
+    }
+
+    @Test
+    public void testUpdateEvaluateStatus() {
+        String processName = "TestProcess";
+        String evaluatedStatus = "SUCCESS";
+
+        when(mockSession.createSQLQuery(anyString())).thenReturn(mockQuery);
+        when(mockQuery.setParameter("processName", processName)).thenReturn(mockQuery);
+        when(mockQuery.setParameter("evaluatedStatus", evaluatedStatus)).thenReturn(mockQuery);
+        when(mockQuery.executeUpdate()).thenReturn(1);
+
+        dao.updateEvaluateStatus(processName, evaluatedStatus);
+
+        verify(mockTransaction).commit();
+        verify(mockSession).close();
+    }
+
+    @Test
+    public void testGetProcessHeartbeatListByStatus() {
+        String status = "ACTIVE";
+
+        when(mockSession.createSQLQuery(anyString())).thenReturn(mockQuery);
+        when(mockQuery.addEntity(TProcessHeartbeat.class)).thenReturn(mockQuery);
+        when(mockQuery.setParameter("status", status)).thenReturn(mockQuery);
+        when(mockQuery.list()).thenReturn(Arrays.asList(new TProcessHeartbeat()));
+
+        List<TProcessHeartbeat> result = dao.getProcessHeartbeatListByStatus(status);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(mockTransaction).commit();
+        verify(mockSession).close();
+    }
+}
+
+
+
+
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 import org.hibernate.Session;
