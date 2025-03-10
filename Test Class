@@ -1,3 +1,140 @@
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.context.ApplicationContext;
+
+import com.baml.tml.futures.managerImpl.StatusAggregationManagerImpl;
+import com.baml.tml.futures.main.HAStatusAggregationMain;
+import com.baml.tml.futures.model.TProcessHeartbeat;
+import com.baml.tml.futures.model.TProcessHeartbeatSummary;
+import com.baml.tml.futures.model.TStGeneralMapping;
+
+public class StatusAggregationTest {
+
+    @Mock
+    private StatusAggregationManagerImpl statusAggregationManager;
+
+    @Mock
+    private ApplicationContext mockContext;
+
+    @InjectMocks
+    private StatusAggregation statusAggregation;
+
+    @Before
+    public void setUp() {
+        // Initialize mocks
+        MockitoAnnotations.initMocks(this);
+
+        // Set up the static context in HAStatusAggregationMain so that the getBean() call works.
+        HAStatusAggregationMain.context = mockContext;
+        when(mockContext.getBean("statusAggregationManager")).thenReturn(statusAggregationManager);
+    }
+
+    @Test
+    public void testProcess() {
+        // Create dummy heartbeat summary data.
+        List<TProcessHeartbeatSummary> heartbeatSummaryList = new ArrayList<>();
+        TProcessHeartbeatSummary hbSummary = new TProcessHeartbeatSummary();
+        hbSummary.setProcessNameC("Process1");
+        hbSummary.setIsMultiInstanceAllowedSw("Y");
+        hbSummary.setAllowedMultiInstancesI(2);
+        hbSummary.setContinuousProcessC("Y");
+        hbSummary.setHostnameC("Host1");
+        heartbeatSummaryList.add(hbSummary);
+
+        // Create dummy general mapping data.
+        List<TStGeneralMapping> generalMappings = new ArrayList<>();
+        TStGeneralMapping generalMapping = new TStGeneralMapping();
+        generalMapping.setCriteria2C("Monday");
+        generalMapping.setCriteriaC("10:00");
+        generalMapping.setCriteria4C("18:00");
+        generalMappings.add(generalMapping);
+
+        // Create dummy process heartbeat data.
+        List<TProcessHeartbeat> heartbeats = new ArrayList<>();
+        TProcessHeartbeat heartbeat = new TProcessHeartbeat();
+        heartbeat.setHostnameC("Host1");
+        heartbeat.setHearbeatStatusC("RUNNING");
+        heartbeat.setLastHeartbeatTimeSentIs(new Date());
+        heartbeats.add(heartbeat);
+
+        // Stub the methods in the manager.
+        when(statusAggregationManager.getHeartbeatSummary()).thenReturn(heartbeatSummaryList);
+        when(statusAggregationManager.getProcessGeneralMapping(anyString())).thenReturn(generalMappings);
+        when(statusAggregationManager.getProcessHearbatList(anyString())).thenReturn(heartbeats);
+
+        // Call the process method.
+        statusAggregation.process();
+
+        // Verify that the expected manager methods were called.
+        verify(statusAggregationManager, times(1)).getHeartbeatSummary();
+        verify(statusAggregationManager, times(1)).getProcessGeneralMapping("Process1");
+        verify(statusAggregationManager, times(1)).getProcessHearbatList("Process1");
+        verify(statusAggregationManager, times(1)).updateEvaluateStataus(hbSummary);
+
+        // Assertions: Expecting the process to update the heartbeat status to OK and a positive description.
+        assertEquals("OK", hbSummary.getHearbeatStatusC());
+        assertTrue(hbSummary.getDescriptionC().contains("Working as configured"));
+    }
+
+    @Test
+    public void testProcessWithCriticalStatus() {
+        // Create dummy heartbeat summary data.
+        List<TProcessHeartbeatSummary> heartbeatSummaryList = new ArrayList<>();
+        TProcessHeartbeatSummary hbSummary = new TProcessHeartbeatSummary();
+        hbSummary.setProcessNameC("Process1");
+        hbSummary.setIsMultiInstanceAllowedSw("Y");
+        hbSummary.setAllowedMultiInstancesI(2);
+        hbSummary.setContinuousProcessC("Y");
+        hbSummary.setHostnameC("Host1");
+        heartbeatSummaryList.add(hbSummary);
+
+        // Create dummy general mapping data.
+        List<TStGeneralMapping> generalMappings = new ArrayList<>();
+        TStGeneralMapping generalMapping = new TStGeneralMapping();
+        generalMapping.setCriteria2C("Monday");
+        generalMapping.setCriteriaC("10:00");
+        generalMapping.setCriteria4C("18:00");
+        generalMappings.add(generalMapping);
+
+        // Create dummy process heartbeat data with a status that should trigger a CRITICAL result.
+        List<TProcessHeartbeat> heartbeats = new ArrayList<>();
+        TProcessHeartbeat heartbeat = new TProcessHeartbeat();
+        heartbeat.setHostnameC("Host1");
+        heartbeat.setHearbeatStatusC("STOPPED");
+        heartbeat.setLastHeartbeatTimeSentIs(new Date());
+        heartbeats.add(heartbeat);
+
+        // Stub the methods in the manager.
+        when(statusAggregationManager.getHeartbeatSummary()).thenReturn(heartbeatSummaryList);
+        when(statusAggregationManager.getProcessGeneralMapping(anyString())).thenReturn(generalMappings);
+        when(statusAggregationManager.getProcessHearbatList(anyString())).thenReturn(heartbeats);
+
+        // Call the process method.
+        statusAggregation.process();
+
+        // Verify that the expected manager methods were called.
+        verify(statusAggregationManager, times(1)).getHeartbeatSummary();
+        verify(statusAggregationManager, times(1)).getProcessGeneralMapping("Process1");
+        verify(statusAggregationManager, times(1)).getProcessHearbatList("Process1");
+        verify(statusAggregationManager, times(1)).updateEvaluateStataus(hbSummary);
+
+        // Assertions: Expecting the process to update the heartbeat status to CRITICAL and an appropriate description.
+        assertEquals("CRITICAL", hbSummary.getHearbeatStatusC());
+        assertTrue(hbSummary.getDescriptionC().contains("Process status is STOPPED"));
+    }
+}
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
