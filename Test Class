@@ -1,3 +1,292 @@
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.context.ApplicationContext;
+
+import com.baml.tml.futures.main.HAStatusAggregationMain;
+import com.baml.tml.futures.managerImpl.StatusAggregationManagerImpl;
+import com.baml.tml.futures.model.TProcessHeartbeat;
+import com.baml.tml.futures.model.TProcessHeartbeatSummary;
+import com.baml.tml.futures.model.TStGeneralMapping;
+import com.baml.tml.futures.util.DateUtil;
+
+public class StatusAggregationTest {
+
+    @Mock
+    private StatusAggregationManagerImpl statusAggregationManager;
+
+    @Mock
+    private ApplicationContext mockContext;
+
+    @InjectMocks
+    private StatusAggregation statusAggregation;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        // Set up the static ApplicationContext so that the getBean call in process() works.
+        HAStatusAggregationMain.context = mockContext;
+        when(mockContext.getBean("statusAggregationManager")).thenReturn(statusAggregationManager);
+    }
+
+    @Test
+    public void testProcess_OKStatus() {
+        // --- Set up heartbeat summary that should eventually update to OK ---
+        List<TProcessHeartbeatSummary> heartbeatSummaryList = new ArrayList<>();
+        TProcessHeartbeatSummary hbSummary = new TProcessHeartbeatSummary();
+        hbSummary.setProcessNameC("Process1");
+        hbSummary.setIsMultiInstanceAllowedSw("Y");
+        hbSummary.setAllowedMultiInstancesI(2);
+        hbSummary.setContinuousProcessC("Y");
+        hbSummary.setHostnameC("Host1");
+        heartbeatSummaryList.add(hbSummary);
+
+        // --- Set up a mapping that does NOT trigger dayCheck parsing ---
+        List<TStGeneralMapping> generalMappings = new ArrayList<>();
+        TStGeneralMapping generalMapping = new TStGeneralMapping();
+        // Use a day name that is unlikely to match so that the "if(dayCheck)" block is skipped.
+        generalMapping.setCriteria2C("NonMatchingDay");
+        generalMapping.setCriteriaC("10:00");
+        generalMapping.setCriteria4C("18:00");
+        generalMapping.setCriteriaSC("600");
+        generalMappings.add(generalMapping);
+
+        // --- Set up a running heartbeat ---
+        List<TProcessHeartbeat> heartbeats = new ArrayList<>();
+        TProcessHeartbeat heartbeat = new TProcessHeartbeat();
+        heartbeat.setHostnameC("Host1");
+        heartbeat.setHearbeatStatusC("RUNNING");
+        // Set last heartbeat time to now so that threshold is not exceeded
+        heartbeat.setLastHeartbeatTimeSentIs(new Date());
+        heartbeat.setIsRunnableSw("Y");
+        heartbeats.add(heartbeat);
+
+        // Stub the manager methods.
+        when(statusAggregationManager.getHeartbeatSummary()).thenReturn(heartbeatSummaryList);
+        when(statusAggregationManager.getProcessGeneralMapping("Process1")).thenReturn(generalMappings);
+        when(statusAggregationManager.getProcessHearbatList("Process1")).thenReturn(heartbeats);
+
+        // Execute the process method.
+        statusAggregation.process();
+
+        // Verify that the proper interactions occurred.
+        verify(statusAggregationManager, times(1)).getHeartbeatSummary();
+        verify(statusAggregationManager, times(1)).getProcessGeneralMapping("Process1");
+        verify(statusAggregationManager, times(1)).getProcessHearbatList("Process1");
+        verify(statusAggregationManager, times(1)).updateEvaluateStataus(hbSummary);
+
+        // Assert that the heartbeat summary is updated with OK status and an appropriate description.
+        assertEquals("OK", hbSummary.getHearbeatStatusC());
+        assertTrue(hbSummary.getDescriptionC().contains("Working as configured"));
+    }
+
+    @Test
+    public void testProcess_CriticalStatus() {
+        // --- Set up heartbeat summary that should eventually update to CRITICAL ---
+        List<TProcessHeartbeatSummary> heartbeatSummaryList = new ArrayList<>();
+        TProcessHeartbeatSummary hbSummary = new TProcessHeartbeatSummary();
+        hbSummary.setProcessNameC("Process1");
+        hbSummary.setIsMultiInstanceAllowedSw("Y");
+        hbSummary.setAllowedMultiInstancesI(2);
+        hbSummary.setContinuousProcessC("Y");
+        hbSummary.setHostnameC("Host1");
+        heartbeatSummaryList.add(hbSummary);
+
+        // --- Set up a mapping that does NOT trigger dayCheck parsing ---
+        List<TStGeneralMapping> generalMappings = new ArrayList<>();
+        TStGeneralMapping generalMapping = new TStGeneralMapping();
+        generalMapping.setCriteria2C("NonMatchingDay");
+        generalMapping.setCriteriaC("10:00");
+        generalMapping.setCriteria4C("18:00");
+        generalMapping.setCriteriaSC("600");
+        generalMappings.add(generalMapping);
+
+        // --- Set up a heartbeat that will trigger a CRITICAL status ---
+        List<TProcessHeartbeat> heartbeats = new ArrayList<>();
+        TProcessHeartbeat heartbeat = new TProcessHeartbeat();
+        heartbeat.setHostnameC("Host1");
+        // Simulate a heartbeat status that is not RUNNING.
+        heartbeat.setHearbeatStatusC("STOPPED");
+        heartbeat.setLastHeartbeatTimeSentIs(new Date());
+        heartbeats.add(heartbeat);
+
+        // Stub the manager methods.
+        when(statusAggregationManager.getHeartbeatSummary()).thenReturn(heartbeatSummaryList);
+        when(statusAggregationManager.getProcessGeneralMapping("Process1")).thenReturn(generalMappings);
+        when(statusAggregationManager.getProcessHearbatList("Process1")).thenReturn(heartbeats);
+
+        // Execute the process method.
+        statusAggregation.process();
+
+        // Verify that the proper interactions occurred.
+        verify(statusAggregationManager, times(1)).getHeartbeatSummary();
+        verify(statusAggregationManager, times(1)).getProcessGeneralMapping("Process1");
+        verify(statusAggregationManager, times(1)).getProcessHearbatList("Process1");
+        verify(statusAggregationManager, times(1)).updateEvaluateStataus(hbSummary);
+
+        // Assert that the heartbeat summary is updated with CRITICAL status.
+        assertEquals("CRITICAL", hbSummary.getHearbeatStatusC());
+        // Expect the description to contain an indication of the stopped status.
+        assertTrue(hbSummary.getDescriptionC().contains("Process status is"));
+    }
+
+    @Test
+    public void testProcess_DayCheckBranch() {
+        // --- This test is intended to cover the branch where the mapping's dayCheck is true ---
+        // Create a heartbeat summary.
+        List<TProcessHeartbeatSummary> heartbeatSummaryList = new ArrayList<>();
+        TProcessHeartbeatSummary hbSummary = new TProcessHeartbeatSummary();
+        hbSummary.setProcessNameC("ProcessDayCheck");
+        hbSummary.setIsMultiInstanceAllowedSw("N");
+        hbSummary.setAllowedMultiInstancesI(1);
+        hbSummary.setContinuousProcessC("Y");
+        hbSummary.setHostnameC("TestHost");
+        heartbeatSummaryList.add(hbSummary);
+
+        // --- Set up a mapping where the day criteria matches the current day ---
+        List<TStGeneralMapping> generalMappings = new ArrayList<>();
+        TStGeneralMapping generalMapping = new TStGeneralMapping();
+        // Use the actual current day from DateUtil to force a match.
+        String currentDay = DateUtil.getDayName();
+        generalMapping.setCriteria2C(currentDay);
+        // Use valid time strings that will be parsed.
+        generalMapping.setCriteriaC("10:00");
+        generalMapping.setCriteria4C("18:00");
+        // Optionally, set a threshold value.
+        generalMapping.setCriteriaSC("600");
+        generalMappings.add(generalMapping);
+
+        // --- Set up a heartbeat that is RUNNING and within the time window ---
+        List<TProcessHeartbeat> heartbeats = new ArrayList<>();
+        TProcessHeartbeat heartbeat = new TProcessHeartbeat();
+        heartbeat.setHostnameC("TestHost");
+        heartbeat.setHearbeatStatusC("RUNNING");
+        // Set last heartbeat time to now so that it does not trigger a timeout.
+        heartbeat.setLastHeartbeatTimeSentIs(new Date());
+        heartbeat.setIsRunnableSw("Y");
+        heartbeats.add(heartbeat);
+
+        // Stub the manager methods.
+        when(statusAggregationManager.getHeartbeatSummary()).thenReturn(heartbeatSummaryList);
+        when(statusAggregationManager.getProcessGeneralMapping("ProcessDayCheck")).thenReturn(generalMappings);
+        when(statusAggregationManager.getProcessHearbatList("ProcessDayCheck")).thenReturn(heartbeats);
+
+        // Execute the process method.
+        statusAggregation.process();
+
+        // Verify interactions.
+        verify(statusAggregationManager, times(1)).getHeartbeatSummary();
+        verify(statusAggregationManager, times(1)).getProcessGeneralMapping("ProcessDayCheck");
+        verify(statusAggregationManager, times(1)).getProcessHearbatList("ProcessDayCheck");
+        verify(statusAggregationManager, times(1)).updateEvaluateStataus(hbSummary);
+
+        // Since the heartbeat is RUNNING and within the time window, we expect an OK status.
+        assertEquals("OK", hbSummary.getHearbeatStatusC());
+        // And the description should include a message about the process working as configured.
+        assertTrue(hbSummary.getDescriptionC().contains("Working as configured"));
+    }
+
+    @Test
+    public void testProcess_NonContinuousProcess() {
+        // --- This test is designed to cover the "non-continuous process" branch ---
+        // Create a heartbeat summary with continuousProcessC NOT equal to "Y"
+        List<TProcessHeartbeatSummary> heartbeatSummaryList = new ArrayList<>();
+        TProcessHeartbeatSummary hbSummary = new TProcessHeartbeatSummary();
+        hbSummary.setProcessNameC("NonContinuousProcess");
+        hbSummary.setIsMultiInstanceAllowedSw("Y");
+        hbSummary.setAllowedMultiInstancesI(1);
+        hbSummary.setContinuousProcessC("N");
+        hbSummary.setHostnameC("TestHost");
+        heartbeatSummaryList.add(hbSummary);
+
+        // --- Set up a mapping that forces the non-continuous branch ---
+        // Set criteriaSC to a non-numeric value so that NumberFormatException is caught and default threshold (600) is used.
+        List<TStGeneralMapping> generalMappings = new ArrayList<>();
+        TStGeneralMapping mapping = new TStGeneralMapping();
+        mapping.setCriteria2C("NonMatchingDay"); // This branch does not depend on dayCheck
+        mapping.setCriteriaC("10:00");
+        mapping.setCriteria4C("18:00");
+        mapping.setCriteriaSC("abc"); // invalid numeric value
+        generalMappings.add(mapping);
+
+        // --- Create a list of heartbeats that will cover multiple branches ---
+        List<TProcessHeartbeat> heartbeats = new ArrayList<>();
+        Date currentDate = new Date();
+        
+        // Branch: ProcessHeartbeat with null status and null last heartbeat time
+        TProcessHeartbeat hb1 = new TProcessHeartbeat();
+        hb1.setHostnameC("TestHost");
+        hb1.setHearbeatStatusC(null);
+        hb1.setLastHeartbeatTimeSentIs(null);
+        heartbeats.add(hb1);
+        
+        // Branch: ProcessHeartbeat with COMPLETED status but with an old heartbeat time (exceeding threshold)
+        TProcessHeartbeat hb2 = new TProcessHeartbeat();
+        hb2.setHostnameC("TestHost");
+        hb2.setHearbeatStatusC("COMPLETED");
+        // Set last heartbeat time to 700 minutes ago (threshold is 600)
+        hb2.setLastHeartbeatTimeSentIs(new Date(System.currentTimeMillis() - 700L * 60 * 1000));
+        hb2.setIsRunnableSw("Y");
+        heartbeats.add(hb2);
+        
+        // Branch: ProcessHeartbeat with COMPLETED status and a recent heartbeat time (within threshold)
+        TProcessHeartbeat hb3 = new TProcessHeartbeat();
+        hb3.setHostnameC("TestHost");
+        hb3.setHearbeatStatusC("COMPLETED");
+        hb3.setLastHeartbeatTimeSentIs(currentDate);
+        hb3.setIsRunnableSw("Y");
+        heartbeats.add(hb3);
+        
+        // Branch: ProcessHeartbeat with COMPLETED status but not runnable (isRunnableSw not "Y") 
+        // which should trigger "Another instance ran on" message.
+        TProcessHeartbeat hb4 = new TProcessHeartbeat();
+        hb4.setHostnameC("TestHost");
+        hb4.setHearbeatStatusC("COMPLETED");
+        hb4.setLastHeartbeatTimeSentIs(currentDate);
+        hb4.setIsRunnableSw("N");
+        heartbeats.add(hb4);
+
+        // Stub the manager methods.
+        when(statusAggregationManager.getHeartbeatSummary()).thenReturn(heartbeatSummaryList);
+        when(statusAggregationManager.getProcessGeneralMapping("NonContinuousProcess")).thenReturn(generalMappings);
+        when(statusAggregationManager.getProcessHearbatList("NonContinuousProcess")).thenReturn(heartbeats);
+
+        // Execute the process method.
+        statusAggregation.process();
+
+        // Verify interactions.
+        verify(statusAggregationManager, times(1)).getHeartbeatSummary();
+        verify(statusAggregationManager, times(1)).getProcessGeneralMapping("NonContinuousProcess");
+        verify(statusAggregationManager, times(1)).getProcessHearbatList("NonContinuousProcess");
+        verify(statusAggregationManager, times(1)).updateEvaluateStataus(hbSummary);
+
+        // We expect that one or more branches will set the evaluated status to "CRITICAL".
+        assertEquals("CRITICAL", hbSummary.getHearbeatStatusC());
+        String description = hbSummary.getDescriptionC();
+        assertNotNull(description);
+        // Check that the description includes messages from:
+        // 1. Null status/last heartbeat branch.
+        assertTrue(description.contains("Process status or last heartbeat time check is null on host"));
+        // 2. Time difference exceeding threshold branch.
+        assertTrue(description.contains("Status checked before"));
+        // 3. Another instance branch.
+        assertTrue(description.contains("Another instance ran on"));
+    }
+}
+
+
+
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
