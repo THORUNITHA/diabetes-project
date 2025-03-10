@@ -1,28 +1,123 @@
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import com.baml.tml.futures.model.TProcessHeartbeat;
+import com.baml.tml.futures.model.TProcessHeartbeatSummary;
+import com.baml.tml.futures.model.TStGeneralMapping;
+import com.baml.tml.futures.managerImpl.StatusAggregationManagerImpl;
 
 public class StatusAggregationTest {
 
+    @Mock
+    private StatusAggregationManagerImpl statusAggregationManager;
+
+    @InjectMocks
     private StatusAggregation statusAggregation;
-    private StatusAggregationManagerImpl mockManager;
 
     @Before
     public void setUp() {
-        // Initialize the StatusAggregation instance and inject the mocked manager.
-        statusAggregation = new StatusAggregation();
-        // Use Mockito to create a mock of the dependency.
-        mockManager = mock(StatusAggregationManagerImpl.class);
-        // Inject the mock via the setter
-        statusAggregation.setStatusAggregationManager(mockManager);
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testProcess() {
+        // Mock data
+        List<TProcessHeartbeatSummary> heartbeatSummaryList = new ArrayList<>();
+        TProcessHeartbeatSummary hbSummary = new TProcessHeartbeatSummary();
+        hbSummary.setProcessNameC("Process1");
+        hbSummary.setIsMultiInstanceAllowedSw("Y");
+        hbSummary.setAllowedMultiInstancesI(2);
+        hbSummary.setContinuousProcessC("Y");
+        hbSummary.setHostnameC("Host1");
+        heartbeatSummaryList.add(hbSummary);
+
+        List<TStGeneralMapping> generalMappings = new ArrayList<>();
+        TStGeneralMapping generalMapping = new TStGeneralMapping();
+        generalMapping.setCriteria2C("Monday");
+        generalMapping.setCriteriaC("10:00");
+        generalMapping.setCriteria4C("18:00");
+        generalMappings.add(generalMapping);
+
+        List<TProcessHeartbeat> heartbeats = new ArrayList<>();
+        TProcessHeartbeat heartbeat = new TProcessHeartbeat();
+        heartbeat.setHostnameC("Host1");
+        heartbeat.setHearbeatStatusC("RUNNING");
+        heartbeat.setLastHeartbeatTimeSentIs(new Date());
+        heartbeats.add(heartbeat);
+
+        // Mock behavior
+        when(statusAggregationManager.getHeartbeatSummary()).thenReturn(heartbeatSummaryList);
+        when(statusAggregationManager.getProcessGeneralMapping(anyString())).thenReturn(generalMappings);
+        when(statusAggregationManager.getProcessHearbatList(anyString())).thenReturn(heartbeats);
+
+        // Call the method to test
+        statusAggregation.process();
+
+        // Verify interactions
+        verify(statusAggregationManager, times(1)).getHeartbeatSummary();
+        verify(statusAggregationManager, times(1)).getProcessGeneralMapping("Process1");
+        verify(statusAggregationManager, times(1)).getProcessHearbatList("Process1");
+        verify(statusAggregationManager, times(1)).updateEvaluateStataus(hbSummary);
+
+        // Assertions
+        assertEquals("OK", hbSummary.getHearbeatStatusC());
+        assertTrue(hbSummary.getDescriptionC().contains("Working as configured"));
+    }
+
+    @Test
+    public void testProcessWithCriticalStatus() {
+        // Mock data
+        List<TProcessHeartbeatSummary> heartbeatSummaryList = new ArrayList<>();
+        TProcessHeartbeatSummary hbSummary = new TProcessHeartbeatSummary();
+        hbSummary.setProcessNameC("Process1");
+        hbSummary.setIsMultiInstanceAllowedSw("Y");
+        hbSummary.setAllowedMultiInstancesI(2);
+        hbSummary.setContinuousProcessC("Y");
+        hbSummary.setHostnameC("Host1");
+        heartbeatSummaryList.add(hbSummary);
+
+        List<TStGeneralMapping> generalMappings = new ArrayList<>();
+        TStGeneralMapping generalMapping = new TStGeneralMapping();
+        generalMapping.setCriteria2C("Monday");
+        generalMapping.setCriteriaC("10:00");
+        generalMapping.setCriteria4C("18:00");
+        generalMappings.add(generalMapping);
+
+        List<TProcessHeartbeat> heartbeats = new ArrayList<>();
+        TProcessHeartbeat heartbeat = new TProcessHeartbeat();
+        heartbeat.setHostnameC("Host1");
+        heartbeat.setHearbeatStatusC("STOPPED");
+        heartbeat.setLastHeartbeatTimeSentIs(new Date());
+        heartbeats.add(heartbeat);
+
+        // Mock behavior
+        when(statusAggregationManager.getHeartbeatSummary()).thenReturn(heartbeatSummaryList);
+        when(statusAggregationManager.getProcessGeneralMapping(anyString())).thenReturn(generalMappings);
+        when(statusAggregationManager.getProcessHearbatList(anyString())).thenReturn(heartbeats);
+
+        // Call the method to test
+        statusAggregation.process();
+
+        // Verify interactions
+        verify(statusAggregationManager, times(1)).getHeartbeatSummary();
+        verify(statusAggregationManager, times(1)).getProcessGeneralMapping("Process1");
+        verify(statusAggregationManager, times(1)).getProcessHearbatList("Process1");
+        verify(statusAggregationManager, times(1)).updateEvaluateStataus(hbSummary);
+
+        // Assertions
+        assertEquals("CRITICAL", hbSummary.getHearbeatStatusC());
+        assertTrue(hbSummary.getDescriptionC().contains("Process status is STOPPED"));
+    }
+}
 
         // Optionally, if your class uses any static context initialization, you may need to adjust that setup.
         MockitoAnnotations.openMocks(this);
