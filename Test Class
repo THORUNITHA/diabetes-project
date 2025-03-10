@@ -1,3 +1,88 @@
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.MockitoAnnotations;
+
+public class StatusAggregationTest {
+
+    private StatusAggregation statusAggregation;
+    private StatusAggregationManagerImpl mockManager;
+
+    @Before
+    public void setUp() {
+        // Initialize the StatusAggregation instance and inject the mocked manager.
+        statusAggregation = new StatusAggregation();
+        // Use Mockito to create a mock of the dependency.
+        mockManager = mock(StatusAggregationManagerImpl.class);
+        // Inject the mock via the setter
+        statusAggregation.setStatusAggregationManager(mockManager);
+
+        // Optionally, if your class uses any static context initialization, you may need to adjust that setup.
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    public void testProcess_NoHeartbeatSummary() {
+        // Setup: simulate no heartbeat summaries available.
+        when(mockManager.getHeartbeatSummary()).thenReturn(Collections.emptyList());
+
+        // Act: call the process() method.
+        statusAggregation.process();
+
+        // Verify: since there are no heartbeat summaries, update should never be called.
+        verify(mockManager, never()).updateEvaluateStataus(any());
+    }
+
+    @Test
+    public void testProcess_WithHeartbeatSummary() {
+        // Create a dummy heartbeat summary.
+        TProcessHeartbeatSummary summary = new TProcessHeartbeatSummary();
+        summary.setProcessNameC("TestProcess");
+        summary.setHostnameC("localhost");
+        summary.setIsMultiInstanceAllowedSw("N");
+        summary.setAllowedMultiInstancesI(1);
+        summary.setContinuousProcessC("N");
+
+        // Return a list with one summary.
+        List<TProcessHeartbeatSummary> summaryList = Arrays.asList(summary);
+        when(mockManager.getHeartbeatSummary()).thenReturn(summaryList);
+
+        // Create a dummy general mapping.
+        TStGeneralMapping mapping = new TStGeneralMapping();
+        // For example, criteria2C holds the day name; here, we assume the test runs on Monday.
+        mapping.setCriteria2C("Monday");
+        mapping.setCriteriaC("10:00");  // Start time
+        mapping.setCriteria4C("18:00"); // End time
+        mapping.setCriteriaSC("600");   // Threshold in minutes
+        when(mockManager.getProcessGeneralMapping(anyString())).thenReturn(Arrays.asList(mapping));
+
+        // Create a dummy process heartbeat.
+        TProcessHeartbeat heartbeat = new TProcessHeartbeat();
+        heartbeat.setHostnameC("localhost");
+        heartbeat.setHearbeatStatusC("RUNNING");
+        heartbeat.setLastHeartbeatTimeSentIs(new Date());
+        heartbeat.setIsRunnableSw("Y");
+        List<TProcessHeartbeat> heartbeatList = Arrays.asList(heartbeat);
+        when(mockManager.getProcessHearbatList(anyString())).thenReturn(heartbeatList);
+
+        // Act: call the process() method.
+        statusAggregation.process();
+
+        // Verify: check that the update method was invoked on the manager.
+        verify(mockManager, atLeastOnce()).updateEvaluateStataus(any(TProcessHeartbeatSummary.class));
+    }
+}
+
+
+
+
 package com.baml.tml.futures.daoImpl;
 
 import static org.junit.Assert.*;
