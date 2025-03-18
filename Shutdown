@@ -1,0 +1,45 @@
+  Here are the **two most important test cases** for the shutdown script:  
+
+---
+
+### **1. Test Case: Verify Process Shutdown via Java Command**  
+- **Test Case Name**: `test_java_shutdown_execution`  
+- **Description**: Ensure that the **Java shutdown command successfully stops the process** running on port **22601**.  
+- **Steps**:  
+  1. Start the `TmlTradeLoaderNamMain` process.  
+  2. Run the shutdown script:  
+     ```bash
+     ./shutdown_script.sh
+     ```  
+  3. Check if the process is still running using:  
+     ```bash
+     ps aux | grep "TmlTradeLoaderNamMain" | grep -v grep
+     ```  
+- **Expected Result**:  
+  - The script should execute the Java shutdown command.  
+  - The process should no longer be running.  
+
+---
+
+### **2. Test Case: Verify Force Kill If Java Shutdown Fails**  
+- **Test Case Name**: `test_force_kill_on_shutdown_failure`  
+- **Description**: Ensure the script **force kills** the process if the Java shutdown command fails.  
+- **Steps**:  
+  1. Start the `TmlTradeLoaderNamMain` process.  
+  2. Modify the Java shutdown command in the script to **simulate failure** (e.g., use an incorrect class name).  
+  3. Run the script:  
+     ```bash
+     ./shutdown_script.sh
+     ```  
+  4. After **5 seconds**, check if the process is still running:  
+     ```bash
+     ps aux | grep "TmlTradeLoaderNamMain" | grep -v grep
+     ```  
+- **Expected Result**:  
+  - The script should **detect that the process is still running**.  
+  - It should **force kill** the process using `kill -9 <TARGET_PID>`.  
+  - The process should **no longer be running**.  
+
+---
+
+These two test cases cover the **critical shutdown functionality**—graceful shutdown via Java and fallback to force kill if needed. Let me know if you need modifications!
