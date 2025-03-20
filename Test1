@@ -1,3 +1,66 @@
+Here’s a **shortened version** of the unit test cases with simple steps:
+
+---
+
+### **Unit Test Case 1: Verify `spring-webmvc` Version**
+#### **Test Case**: `testSpringWebMvcVersion`
+- **Steps**:
+  1. Get the version of `spring-webmvc` from the classpath.
+  2. Check if the version is `5.3.34`.
+- **Expected Result**: Version should be `5.3.34`.
+
+```java
+@Test
+public void testSpringWebMvcVersion() {
+    String version = DispatcherServlet.class.getPackage().getImplementationVersion();
+    assertEquals("5.3.34", version);
+}
+```
+
+---
+
+### **Unit Test Case 2: Verify `spring-security-config` Version**
+#### **Test Case**: `testSpringSecurityConfigVersion`
+- **Steps**:
+  1. Get the version of `spring-security-config` from the classpath.
+  2. Check if the version is `5.8.16`.
+- **Expected Result**: Version should be `5.8.16`.
+
+```java
+@Test
+public void testSpringSecurityConfigVersion() {
+    String version = WebSecurityConfigurerAdapter.class.getPackage().getImplementationVersion();
+    assertEquals("5.8.16", version);
+}
+```
+
+---
+
+### **Unit Test Case 3: Verify No Dependency Conflicts**
+#### **Test Case**: `testNoDependencyConflicts`
+- **Steps**:
+  1. Check dependencies of `silver-common` and `silver-base`.
+  2. Ensure no conflicts exist.
+- **Expected Result**: No conflicts should be found.
+
+```java
+@Test
+public void testNoDependencyConflicts() {
+    boolean hasConflicts = DependencyConflictChecker.checkConflicts("silver-common", "silver-base");
+    assertFalse(hasConflicts);
+}
+```
+
+---
+
+### **Key Points**:
+1. Use `getPackage().getImplementationVersion()` to check library versions.
+2. Use a utility like `DependencyConflictChecker` to detect conflicts.
+3. Keep tests simple and focused on verifying the upgrades.
+
+Let me know if you need further clarification! 😊
+
+
 ### **Acceptance Criteria**
 
 #### **Given**  
