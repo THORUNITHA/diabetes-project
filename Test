@@ -1,3 +1,21 @@
+**Subject:** Urgent: ERP Required for Spring Framework Path Traversal Vulnerability Remediation  
+
+Dear [Recipient's Name],  
+
+We have identified multiple vulnerabilities in the Spring Framework, and we have already completed the upgrade to **Spring 5.3.34**, which is scheduled for release on **March 28**.  
+
+However, another critical vulnerability—**Spring Framework Path Traversal Vulnerability**—affects versions **5.3.30 to 5.3.40**. Our current TML applications use **JDK 8**, which prevents us from upgrading to **Spring 6.1.x** due to its JDK 17 requirement. To remediate this issue, we must upgrade to **Spring 5.3.41**.  
+
+The commercial version of **Spring 5.3.41** is available, but the necessary licensing has not yet been procured by the central team. Since we cannot proceed with the upgrade until the license is obtained, we require an **ERP to facilitate the procurement of the license** at the earliest.  
+
+Please let us know the next steps and expected timelines for this procurement so we can proceed with the remediation.  
+
+Best regards,  
+[Your Name]  
+[Your Designation]  
+[Your Team/Department]
+
+
 #!/bin/sh
 
 # Load environment variables
